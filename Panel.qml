@@ -7,8 +7,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "xvvhang.agent-usage"
-  ipcTarget: "xvvhang.agent-usage"
+  moduleName: "konochi.konometer"
+  ipcTarget: "konochi.konometer"
   manageIpc: false
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
