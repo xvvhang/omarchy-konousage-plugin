@@ -7,8 +7,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "xvvhang.ai-usage"
-  ipcTarget: "xvvhang.ai-usage"
+  moduleName: "xvvhang.agent-usage"
+  ipcTarget: "xvvhang.agent-usage"
   manageIpc: false
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
