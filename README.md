@@ -1,4 +1,6 @@
-# Agent Usage
+# Konometer
+
+Part of **Konochi**, a personal Omarchy plugin series by Alec Xu.
 
 User-owned Omarchy bar plugin derived from Omarchy's MIT-licensed agents plugin.
 
@@ -26,9 +28,9 @@ statistics are intentionally not merged between the accounts. No OAuth refresh,
 account switching, or credential writes are performed by this plugin.
 
 Settings: `refreshIntervalSec` in this widget's shell.json entry.
-IPC: `omarchy-shell xvvhang.agent-usage refresh` (also open/close/toggle/next).
+IPC: `omarchy-shell konochi.konometer refresh` (also open/close/toggle/next).
 
-To remove from the bar: `omarchy plugin disable xvvhang.agent-usage`.
+To remove from the bar: `omarchy plugin disable konochi.konometer`.
 
 ## Install and remove
 
@@ -37,8 +39,8 @@ Codex and/or OpenCode V2 clients described above. No privileged setup or install
 
 ```sh
 omarchy plugin add https://github.com/xvvhang/omarchy-ai-usage --enable
-omarchy plugin disable xvvhang.agent-usage
-omarchy plugin remove xvvhang.agent-usage
+omarchy plugin disable konochi.konometer
+omarchy plugin remove konochi.konometer
 ```
 
 Removal leaves the sanitized usage cache in the state directory above; client

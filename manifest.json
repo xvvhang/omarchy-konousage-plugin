@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "xvvhang.agent-usage",
-  "name": "Agent Usage",
+  "id": "konochi.konometer",
+  "name": "Konometer",
   "version": "1.0.0",
   "author": "alec",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "activation": "on-demand",
   "entryPoints": { "barWidget": "Panel.qml" },
   "barWidget": {
-    "displayName": "Agent Usage",
+    "displayName": "Konometer",
     "description": "Account-separated subscription usage and reset times",
     "category": "AI",
     "allowMultiple": false,
