@@ -7,8 +7,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "konochi.konometer"
-  ipcTarget: "konochi.konometer"
+  moduleName: "konochi.konousage"
+  ipcTarget: "konochi.konousage"
   manageIpc: false
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
