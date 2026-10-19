@@ -16,6 +16,12 @@ No credential is copied or written. Expired credentials must be refreshed by the
 own client. The OpenCode API command may start its background service if stopped.
 Codex OS-keyring-only sign-in is not currently supported.
 
+## Preview
+
+![Konousage panel with separate Codex and OpenCode tabs, remaining weekly coding quota, and a reset countdown](preview.png)
+
+## Credentials, network access, and caching
+
 Queries https://chatgpt.com/backend-api/wham/usage with each account's own bearer
 token and account header, with redirects disabled. This internal upstream endpoint
 may change. It measures coding quota, not all ChatGPT chat limits. Windows are
