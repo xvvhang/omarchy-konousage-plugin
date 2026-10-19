@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "alec.ai-usage",
+  "name": "AI Usage",
+  "version": "1.0.0",
+  "author": "alec",
+  "license": "MIT",
+  "description": "Separate ChatGPT subscription quotas for OpenCode and Codex.",
+  "kinds": ["bar-widget"],
+  "activation": "on-demand",
+  "entryPoints": { "barWidget": "Panel.qml" },
+  "barWidget": {
+    "displayName": "AI Usage",
+    "description": "Account-separated subscription usage and reset times",
+    "category": "AI",
+    "allowMultiple": false,
+    "defaults": { "refreshIntervalSec": 300 },
+    "schema": [
+      { "key": "refreshIntervalSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 60, "max": 3600, "step": 60, "defaultValue": 300 }
+    ]
+  }
+}
