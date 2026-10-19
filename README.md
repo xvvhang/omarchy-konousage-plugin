@@ -38,7 +38,7 @@ Requires Omarchy Quattro, Python 3 (standard library only), and the signed-in
 Codex and/or OpenCode V2 clients described above. No privileged setup or installer.
 
 ```sh
-omarchy plugin add https://github.com/xvvhang/konousage --enable
+omarchy plugin add https://github.com/xvvhang/omarchy-konousage-plugin --enable
 omarchy plugin disable konochi.konousage
 omarchy plugin remove konochi.konousage
 ```
