@@ -26,9 +26,9 @@ statistics are intentionally not merged between the accounts. No OAuth refresh,
 account switching, or credential writes are performed by this plugin.
 
 Settings: `refreshIntervalSec` in this widget's shell.json entry.
-IPC: `omarchy-shell alec.ai-usage refresh` (also open/close/toggle/next).
+IPC: `omarchy-shell xvvhang.ai-usage refresh` (also open/close/toggle/next).
 
-To remove from the bar: `omarchy plugin disable alec.ai-usage`.
+To remove from the bar: `omarchy plugin disable xvvhang.ai-usage`.
 
 ## Install and remove
 
@@ -37,8 +37,8 @@ Codex and/or OpenCode V2 clients described above. No privileged setup or install
 
 ```sh
 omarchy plugin add https://github.com/xvvhang/omarchy-ai-usage --enable
-omarchy plugin disable alec.ai-usage
-omarchy plugin remove alec.ai-usage
+omarchy plugin disable xvvhang.ai-usage
+omarchy plugin remove xvvhang.ai-usage
 ```
 
 Removal leaves the sanitized usage cache in the state directory above; client

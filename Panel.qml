@@ -7,8 +7,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "alec.ai-usage"
-  ipcTarget: "alec.ai-usage"
+  moduleName: "xvvhang.ai-usage"
+  ipcTarget: "xvvhang.ai-usage"
   manageIpc: false
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
