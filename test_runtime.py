@@ -1,9 +1,13 @@
 """Real offline IO/worker tests. No client, network, credentials or desktop calls."""
+import concurrent.futures
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import signal
+import select
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -20,6 +24,39 @@ def running(pid):
         return Path(f"/proc/{pid}/stat").read_text().split(") ", 1)[1][0] != "Z"
     except FileNotFoundError:
         return False
+
+
+def fixture_credential():
+    return {"id": "fixture", "integrationID": "openai", "active": True, "label": "Fixture",
+            "value": {"type": "oauth", "access": "fake-secret", "metadata": {"accountID": "fake-id"}}}
+
+
+def owner_death_fixture(directory, phase):
+    """Subprocess entry point: a real supervisor killed by the test's fake QML owner."""
+    root = Path(directory)
+    collect.STATE = root / "state"
+    collect.opencode_entries = lambda: [fixture_credential()]
+    collect.codex_entry = fixture_credential
+    collect.current_model = lambda source: ("openai", "fixture")
+
+    def blocked_query(*args):
+        (root / "worker").write_text(str(os.getpid()))
+        (root / "ready").write_text("blocked account query")
+        time.sleep(60)
+
+    def blocked_cli():
+        (root / "worker").write_text(str(os.getpid()))
+        code = ("import os,subprocess,sys,time; from pathlib import Path; "
+                f"Path({str(root / 'cli')!r}).write_text(str(os.getpid())); "
+                "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'], "
+                "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True); "
+                f"Path({str(root / 'service')!r}).write_text(str(p.pid)); "
+                f"Path({str(root / 'ready')!r}).write_text('blocked CLI'); time.sleep(60)")
+        runtime.bounded_command([sys.executable, "-c", code], timeout=25)
+
+    collect.read_usage = blocked_query
+    target = collect.refresh if phase == "query" else blocked_cli
+    os._exit(runtime.supervise(target, timeout=30))
 
 
 class RuntimeTests(unittest.TestCase):
@@ -198,6 +235,132 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text())["accounts"], [])
         finally:
             os.close(held)
+
+    def assert_later_collection_succeeds(self):
+        with patch.object(collect, "STATE", self.root / "state"), \
+             patch.object(collect, "opencode_entries", return_value=[fixture_credential()]), \
+             patch.object(collect, "codex_entry", side_effect=fixture_credential), \
+             patch.object(collect, "current_model", return_value=("openai", "fixture")), \
+             patch.object(collect, "read_usage", return_value={"limits": [{"percent": 0.2}]}):
+            self.assertEqual(runtime.supervise(collect.refresh, timeout=2), 0)
+        snapshot = json.loads((self.root / "state/inventory.json").read_text())
+        self.assertEqual(snapshot["accounts"][0]["limits"][0]["percent"], 0.2)
+        self.assertNotIn("fake-secret", json.dumps(snapshot))
+
+    def exercise_owner_sigkill(self, phase):
+        """Use actual SIGKILL, not terminate(), to match QProcess destruction."""
+        state = self.root / "state"
+        state.mkdir()
+        previous = {"schemaVersion": 2, "accounts": [], "harnesses": [], "fixture": "previous"}
+        (state / "inventory.json").write_text(json.dumps(previous))
+        script = "import sys; from test_runtime import owner_death_fixture; owner_death_fixture(sys.argv[1], sys.argv[2])"
+        owner = subprocess.Popen([sys.executable, "-B", "-c", script, str(self.root), phase],
+                                 cwd=Path(__file__).parent, stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        handles = {}
+        try:
+            deadline = time.monotonic() + 5
+            while not (self.root / "ready").exists() and owner.poll() is None and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue((self.root / "ready").exists(), "synthetic supervisor fixture did not become ready")
+            for name in ("worker", "cli", "service"):
+                path = self.root / name
+                if path.exists():
+                    handles[name] = os.pidfd_open(int(path.read_text()))
+            self.assertIn("worker", handles)
+            owner.kill()
+            self.assertEqual(owner.wait(timeout=2), -signal.SIGKILL)
+            for name in ("worker", "cli"):
+                if name in handles:
+                    self.assertTrue(select.select([handles[name]], [], [], 2)[0], name + " outlived killed supervisor")
+            if phase == "cli":
+                self.assertIn("cli", handles)
+                self.assertIn("service", handles)
+                self.assertFalse(select.select([handles["service"]], [], [], 0)[0], "persistent service was killed")
+            self.assertEqual(json.loads((state / "inventory.json").read_text()), previous)
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+            owner.wait(timeout=2)
+            # pidfds pin only our synthetic processes, avoiding PID-reuse races.
+            for fd in handles.values():
+                try:
+                    signal.pidfd_send_signal(fd, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                finally:
+                    os.close(fd)
+        self.assert_later_collection_succeeds()
+
+    def test_owner_sigkill_during_blocked_account_query_then_normal_collection(self):
+        self.exercise_owner_sigkill("query")
+
+    def test_owner_sigkill_during_cli_preserves_service_then_normal_collection(self):
+        self.exercise_owner_sigkill("cli")
+
+    def test_worker_rejects_parent_mismatch_before_running_target(self):
+        marker = self.root / "must-not-run"
+
+        def target():
+            marker.write_text("unexpected")
+
+        proc = multiprocessing.get_context("fork").Process(
+            target=runtime._worker, args=(target, -1, time.monotonic() + 10))
+        try:
+            proc.start()
+            proc.join(timeout=2)
+            self.assertFalse(proc.is_alive())
+            self.assertEqual(proc.exitcode, 125)
+            self.assertFalse(marker.exists())
+        finally:
+            if proc.is_alive():
+                proc.kill()
+            proc.join(timeout=2)
+            proc.close()
+
+    def test_worker_has_independent_hard_deadline_without_supervisor_watchdog(self):
+        marker = self.root / "worker-started"
+
+        def blocked_target():
+            marker.write_text("started")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(time.sleep, 60).result()
+
+        started = time.monotonic()
+        proc = multiprocessing.get_context("fork").Process(
+            target=runtime._worker, args=(blocked_target, os.getpid(), started + 0.2))
+        try:
+            proc.start()
+            proc.join(timeout=2)
+            self.assertTrue(marker.exists())
+            self.assertFalse(proc.is_alive())
+            self.assertEqual(proc.exitcode, -signal.SIGALRM)
+            self.assertLess(time.monotonic() - started, 2)
+        finally:
+            if proc.is_alive():
+                proc.kill()
+            proc.join(timeout=2)
+            proc.close()
+
+    def test_expired_startup_budget_does_not_run_target(self):
+        marker = self.root / "must-not-run"
+
+        def target():
+            marker.write_text("unexpected")
+
+        proc = multiprocessing.get_context("fork").Process(
+            target=runtime._worker, args=(target, os.getpid(), time.monotonic() - 1))
+        try:
+            proc.start()
+            proc.join(timeout=2)
+            self.assertFalse(proc.is_alive())
+            self.assertEqual(proc.exitcode, 124)
+            self.assertFalse(marker.exists())
+        finally:
+            if proc.is_alive():
+                proc.kill()
+            proc.join(timeout=2)
+            proc.close()
 
 
 if __name__ == "__main__":

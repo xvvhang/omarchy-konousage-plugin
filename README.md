@@ -80,11 +80,25 @@ transcript syncing is not used: these are account quotas, not local token counts
   including model discovery, credential/config/cache reads, all network jobs and
   the atomic cache write. Cleanup has a separate maximum one-second budget:
   terminate the worker, then escalate to SIGKILL if it does not settle.
+- The worker independently arms Linux `PR_SET_PDEATHSIG` with SIGKILL before
+  running any collection code. Its expected supervisor PID is captured before
+  fork and checked after arming, closing the parent-death/startup race. Destruction
+  of the owning QML Process (which kills the supervisor directly) therefore also
+  stops the worker, without relying on a supervisor SIGTERM handler.
+- A worker-local `ITIMER_REAL` uses the kernel's default SIGALRM action as an
+  independent hard stop at the original deadline plus the one-second cleanup
+  budget. It can terminate a blocked query thread/main-thread wait even if the
+  supervisor is itself stalled; it is not a deferred Python signal callback.
+  An already-expired startup budget exits before running the collection target.
 - The worker kills/reaps its own finite CLI by PID on cancellation. An exec shim
   sets Linux `PR_SET_PDEATHSIG` on that CLI, so even a forced worker kill cannot
   leave it running. No process-group signals are used. The kernel clears the
   parent-death setting on fork; OpenCode's intentionally persistent managed
   service is not terminated by the collector.
+  The owner-death chain is QML owner → supervisor → worker → finite CLI; only
+  the last two links have kernel parent-death guards. Abrupt SIGKILL cannot run
+  Python file-cleanup callbacks, so it may leave a sanitized temporary cache file;
+  the inventory itself is still replaced only atomically.
 - CLI stdout is capped at 1 MiB and stderr at 64 KiB **while produced**, drained
   together via nonblocking descriptors with a 25-second CLI deadline. stderr is
   discarded, never logged. This bounds this plugin's buffers; the native

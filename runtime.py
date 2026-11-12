@@ -3,6 +3,7 @@
 Only processes started here are stopped by PID. In particular, never signal a
 process group: OpenCode may intentionally start its own persistent managed service.
 """
+import ctypes
 import multiprocessing
 import os
 import selectors
@@ -22,6 +23,8 @@ _children = set()
 _temporary_files = set()
 _spawning = False
 _stop_requested = False
+# Load before fork so arming the worker guard needs no child-side module import.
+_libc = ctypes.CDLL(None, use_errno=True)
 
 
 def read_local(path, limit=MAX_LOCAL):
@@ -134,9 +137,31 @@ def bounded_command(command, timeout=25, stdout_limit=MAX_STDOUT, stderr_limit=M
         proc.stderr.close()
 
 
-def _worker(target):
+def require_parent(expected_parent):
+    """Arm a non-catchable owner-death guard, then close the fork/startup race.
+
+    expected_parent must be captured by the parent BEFORE fork/spawn, never by
+    querying getppid in an already-orphaned child. Linux clears this on fork, so
+    the guard does not propagate to intentionally persistent service children.
+    """
+    if _libc.prctl(1, signal.SIGKILL, 0, 0, 0) != 0 or os.getppid() != expected_parent:
+        os._exit(125)
+
+
+def _worker(target, expected_parent, deadline):
+    # QML Process destruction kills the supervisor without running its handlers.
+    # Protect the missing supervisor -> worker link before running any target.
+    require_parent(expected_parent)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        os._exit(124)
     signal.signal(signal.SIGTERM, cancel_worker)
     signal.signal(signal.SIGINT, cancel_worker)
+    # Independent kernel hard stop, not a Python callback which might wait on
+    # the GIL or a blocked main thread. Normally the supervisor settles earlier;
+    # this backstop also bounds execution if the supervisor is itself stalled.
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    signal.setitimer(signal.ITIMER_REAL, remaining + CLEANUP_SECONDS)
     code = 0
     try:
         target()
@@ -156,7 +181,7 @@ def supervise(target, timeout=COLLECTION_SECONDS):
     memory, no credential payload is sent over supervisor pipes or command args.
     """
     deadline = time.monotonic() + timeout
-    proc = multiprocessing.get_context("fork").Process(target=_worker, args=(target,))
+    proc = multiprocessing.get_context("fork").Process(target=_worker, args=(target, os.getpid(), deadline))
     cancelled = False
 
     def cancel(signum, frame):
@@ -169,7 +194,9 @@ def supervise(target, timeout=COLLECTION_SECONDS):
         while proc.is_alive() and not cancelled and time.monotonic() < deadline:
             proc.join(timeout=min(0.05, max(0, deadline - time.monotonic())))
         if not proc.is_alive():
-            return 0 if proc.exitcode == 0 else 1
+            if proc.exitcode == 0:
+                return 0
+            return 124 if proc.exitcode in (124, -signal.SIGALRM) else 1
         proc.terminate()
         proc.join(timeout=CLEANUP_SECONDS / 2)
         if proc.is_alive():
@@ -192,11 +219,9 @@ def untrack_temporary(path):
 
 
 def exec_cli(expected_parent, command):
-    import ctypes
-    libc = ctypes.CDLL(None, use_errno=True)
-    # PR_SET_PDEATHSIG is cleared on fork, but preserved across unprivileged exec.
-    if libc.prctl(1, signal.SIGKILL, 0, 0, 0) != 0 or os.getppid() != expected_parent:
-        os._exit(125)
+    # Preserve the worker -> finite CLI link; forked managed services do not
+    # inherit it. The worker has its own supervisor-death guard above.
+    require_parent(expected_parent)
     os.execvp(command[0], command)
 
 

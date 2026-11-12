@@ -1,5 +1,29 @@
 # Validation record
 
+## QML owner destruction — 1.1.3 / 2026-11-12
+
+- **42 offline tests pass**, including the original collector/input/queue tests.
+- Two new tests start the real `supervise` path in a synthetic subprocess and
+  directly SIGKILL that supervisor, matching native QProcess destruction rather
+  than taking the graceful SIGTERM path. One waits until `collect.refresh` is
+  blocked inside an account-query thread; the other waits for a finite CLI which
+  has started a fake persistent managed service.
+- Linux pidfds verify the worker exits after supervisor death and the finite CLI
+  exits after worker death, while the fake persistent service remains alive. Only
+  fixture-owned processes are signalled during test cleanup, using pinned pidfds
+  to avoid PID-reuse races. Each case then runs a normal supervised fixture
+  collection successfully; the previous inventory remains unchanged on owner death.
+- Additional tests check parent mismatch rejects target execution, an expired
+  startup budget rejects target execution, and a standalone worker with no
+  supervising watchdog still terminates a blocked account-thread wait through
+  its independent kernel SIGALRM deadline.
+- These are real offline process/signal tests, not claims that the test suite
+  executed a desktop reload or native Quickshell destruction. No real client,
+  credentials or network is used. The new tests require Linux pidfd support.
+- Plugin manifest validation and `git diff --check` pass. A separate live
+  `python3 -B collect.py` completes successfully with the new worker guards.
+- The prior native preview remains representative; no UI layout or asset changed.
+
 ## Collector completion prerequisites — 1.1.2 / 2026-11-12
 
 Environment: Omarchy 4.5.0-3, Quickshell 0.3.2.r7.g2b4501a-1, Linux.
