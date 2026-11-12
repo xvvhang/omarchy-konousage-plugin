@@ -3,6 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Icons.js" as Icons
 
@@ -12,9 +13,9 @@ Panel {
   ipcTarget: "konochi.konousage"
   manageIpc: false
 
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
+  readonly property color urgent: bar ? bar.urgent : Commons.Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   property string viewMode: "harness"
   property double nowMs: Date.now()
@@ -60,6 +61,8 @@ Panel {
       "Current account unavailable": "status.account",
       "Sign-in unavailable": "status.signin",
       "Unable to refresh": "status.refresh",
+      "Collection timed out": "status.timeout",
+      "Collection failed": "status.failed",
       "No quota windows reported": "status.empty"
     }
     return keys[status] ? strings.t(keys[status]) : status
@@ -250,7 +253,7 @@ Panel {
                     width: parent.width
                     height: Math.max(Style.space(4), Math.round(Style.spacing.controlHeight * 0.14))
                     radius: height / 2
-                    color: Style.selectedFillFor(root.foreground, Color.accent)
+                    color: Style.selectedFillFor(root.foreground, Commons.Color.accent)
 
                     Rectangle {
                       anchors.left: parent.left
@@ -306,7 +309,7 @@ Panel {
             textFormat: Text.PlainText
             width: parent.width
             visible: root.rows.length === 0
-            text: strings.t("view.empty")
+            text: usage.collectionStatus !== "" ? root.statusText({usageStatusText: usage.collectionStatus}) : strings.t("view.empty")
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.body

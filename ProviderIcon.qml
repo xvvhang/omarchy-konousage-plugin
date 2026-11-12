@@ -1,13 +1,14 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import "Icons.js" as Icons
 
 // Matches the built-in Agents plugin's surface-aware SVG/fallback behavior.
 Item {
   id: root
   property string iconKey: ""
-  property color surface: Color.popups.background
-  property color foreground: Color.foreground
+  property color surface: Commons.Color.popups.background
+  property color foreground: Commons.Color.foreground
   property string fontFamily: Style.font.family
   property real size: Style.space(20)
   readonly property var candidates: Icons.candidates(iconKey, Icons.lightSurface(surface.r, surface.g, surface.b))

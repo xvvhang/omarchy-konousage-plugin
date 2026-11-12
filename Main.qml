@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "RefreshState.js" as RefreshState
 
 // A single atomic inventory keeps harness/account associations in the same scan.
 Item {
@@ -12,6 +13,7 @@ Item {
   property var inventory: ({})
   readonly property string syncStatusText: ""
   property bool pendingRefresh: false
+  property string collectionStatus: ""
   readonly property int refreshIntervalSec: Math.max(60, Number(settings.refreshIntervalSec || 300))
 
   FileView {
@@ -30,13 +32,13 @@ Item {
 
   Process {
     id: updateProcess
-    command: ["python3", Qt.resolvedUrl("collect.py").toString().replace(/^file:\/\//, "")]
-    onExited: {
-      inventoryFile.reload()
-      if (root.pendingRefresh) {
-        root.pendingRefresh = false
-        Qt.callLater(root.refreshLimits)
-      }
+    command: ["python3", "-B", Qt.resolvedUrl("collect.py").toString().replace(/^file:\/\//, "")]
+    onExited: function(exitCode, exitStatus) {
+      var next = RefreshState.settle(exitCode, exitStatus, root.pendingRefresh)
+      root.collectionStatus = next.status
+      root.pendingRefresh = false
+      if (root.collectionStatus === "") inventoryFile.reload()
+      if (next.retry) Qt.callLater(root.refreshLimits)
     }
   }
 
@@ -50,8 +52,9 @@ Item {
 
   function refreshAll(force) { refreshLimits() }
   function refreshLimits() {
-    if (updateProcess.running) { pendingRefresh = true; return }
-    updateProcess.running = true
+    var next = RefreshState.request(updateProcess.running)
+    pendingRefresh = next.queue
+    if (next.start) updateProcess.running = true
   }
 
   function providerEnabled(id) {
@@ -63,6 +66,10 @@ Item {
     result.providerId = id
     result.providerName = name
     result.detailText = detail
+    if (root.collectionStatus !== "") {
+      result.usageStatusText = root.collectionStatus
+      result.authHelpText = "Collection did not complete. Displaying cached values, not a confirmed current account association."
+    }
     return result
   }
 

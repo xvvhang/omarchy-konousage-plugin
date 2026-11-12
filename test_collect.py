@@ -129,12 +129,12 @@ class ModelSelectionTests(unittest.TestCase):
     def test_opencode_uses_last_selected_model_not_all_recent_models(self):
         payload = {"recent": [{"providerID": "zai", "modelID": "glm-test"},
                               {"providerID": "openai", "modelID": "gpt-test"}]}
-        with patch.object(Path, "read_text", return_value=json.dumps(payload)):
+        with patch.object(collect, "read_local", return_value=json.dumps(payload)):
             self.assertEqual(collect.current_model("opencode"), ("zai", "glm-test"))
 
     def test_codex_profile_overrides_default(self):
         config = 'model = "default"\nprofile = "work"\n[profiles.work]\nmodel = "selected"\nmodel_provider = "custom"\n'
-        with patch.object(Path, "read_text", return_value=config):
+        with patch.object(collect, "read_local", return_value=config):
             self.assertEqual(collect.current_model("codex"), ("custom", "selected"))
 
 

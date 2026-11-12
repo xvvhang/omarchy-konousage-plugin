@@ -11,5 +11,7 @@
   "status.account": "Current account unavailable",
   "status.signin": "Sign-in unavailable",
   "status.refresh": "Unable to refresh · showing cached values if available",
-  "status.empty": "No quota windows reported"
+  "status.empty": "No quota windows reported",
+  "status.timeout": "Collection timed out · cached values, current account unconfirmed",
+  "status.failed": "Collection failed · cached values, current account unconfirmed"
 }

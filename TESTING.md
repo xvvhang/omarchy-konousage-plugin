@@ -1,5 +1,43 @@
 # Validation record
 
+## Collector completion prerequisites — 1.1.2 / 2026-11-12
+
+Environment: Omarchy 4.5.0-3, Quickshell 0.3.2.r7.g2b4501a-1, Linux.
+
+- **37 offline tests pass** using `python3 -B -m unittest discover -v`.
+  Tests do not read real credentials, invoke OpenCode/Codex, access the network,
+  or run desktop commands. Node.js is needed for the optional JS-helper tests.
+- Real temporary FIFOs held open are rejected immediately by the descriptor-
+  checked input helper, including the Codex auth/config and OpenCode model paths.
+  Oversized and post-fstat-growing regular files are capped; regular-file symlinks
+  remain supported and FIFO symlinks are rejected.
+- Real synthetic CLI workers flooding either stdout or stderr are stopped at
+  their byte cap. A stalled CLI is killed/reaped, followed by a successful command.
+- A stalled account-query thread is stopped by the whole-invocation supervisor;
+  a subsequent supervised fixture collection succeeds and writes the inventory.
+  The JS transitions used by Main.qml separately verify that a pending refresh
+  is released after code 124 and that the next success clears the failure state.
+- A fake persistent service survives collection cancellation while the finite
+  CLI stops. A SIGTERM-ignoring worker exercises SIGKILL escalation and the Linux
+  parent-death signal still stops its finite CLI. No process groups are killed.
+  Registered temporary files are cleaned up on ordinary deadline cancellation.
+- Worker failure returns code 1; deadline expiry returns 124. Oversized cache
+  serialization cannot replace the last successful inventory.
+- Manifest validation passes. Qt 6 qmllint with a temporary `qs` import alias
+  exits 0 with no import/syntax/unresolved-type errors; dynamic kit warnings remain.
+- Live `python3 -B collect.py` completes successfully using the supervised path.
+  This is separate from the offline suite and does use the configured clients.
+- `preview.png` has been replaced by native Qt renders of the production
+  Harness/Accounts panel using a fixture-only Main.qml, clearly labelled demo data.
+  The collector and real account files are never used by the preview helper.
+  Native dark and light-surface renders were visually inspected: OpenCode, Codex,
+  DeepSeek and ZAI marks load, and monochrome light-surface variants switch.
+  This is not a claim of a complete SVG/security or whole-runtime approval.
+- Credential/client, runtime dependency and vendored-asset provenance contracts
+  are documented in README. Stock install/uninstall is not re-run over this live
+  development checkout; maintainer installation/listing/final-state gates remain
+  for independent review.
+
 ## List header icons — 2026-11-12
 
 - Release 1.1.1 uses compact 20-unit header icons and restores remaining-quota

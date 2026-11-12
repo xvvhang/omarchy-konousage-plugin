@@ -11,5 +11,7 @@
   "status.account": "当前 AI 的账户不可用",
   "status.signin": "无法读取登录信息",
   "status.refresh": "刷新失败，如有缓存则显示上次结果",
-  "status.empty": "服务未返回额度信息"
+  "status.empty": "服务未返回额度信息",
+  "status.timeout": "采集超时 · 显示缓存，当前账户尚未确认",
+  "status.failed": "采集失败 · 显示缓存，当前账户尚未确认"
 }

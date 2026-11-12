@@ -6,12 +6,12 @@ import json
 import math
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 import time
 import tomllib
 import urllib.request
 from datetime import datetime, timezone
+from runtime import MAX_CACHE, bounded_command, read_local, supervise, track_temporary, untrack_temporary
 
 STATE = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "omarchy/ai-usage"
 MAX_RESPONSE = 1024 * 1024
@@ -32,16 +32,13 @@ def identity(provider, account):
 
 
 def opencode_entries():
-    proc = subprocess.run(["opencode", "api", "get", "/api/credential"],
-                          capture_output=True, text=True, timeout=25)
-    if proc.returncode:
-        raise ValueError("Credential API unavailable")
-    return json.loads(proc.stdout)["data"][:128]
+    output = bounded_command(["opencode", "api", "get", "/api/credential"])
+    return json.loads(output)["data"][:128]
 
 
 def codex_entry():
     home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
-    auth = json.loads((home / "auth.json").read_text())
+    auth = json.loads(read_local(home / "auth.json"))
     tokens = auth.get("tokens") or {}
     if tokens.get("access_token") and tokens.get("account_id"):
         return {"id": "codex", "integrationID": "openai", "label": "", "active": True,
@@ -57,12 +54,12 @@ def current_model(source):
     """Read the last selected OpenCode model / Codex configured model, not all integrations."""
     if source == "opencode":
         state = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
-        recent = json.loads((state / "opencode/model.json").read_text()).get("recent") or []
+        recent = json.loads(read_local(state / "opencode/model.json")).get("recent") or []
         if recent:
             return text(recent[0]["providerID"]), text(recent[0]["modelID"])
         raise ValueError("No selected model")
     home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
-    config = tomllib.loads((home / "config.toml").read_text())
+    config = tomllib.loads(read_local(home / "config.toml"))
     profile = (config.get("profiles") or {}).get(config.get("profile"), {})
     provider = profile.get("model_provider", config.get("model_provider", "openai"))
     model = profile.get("model", config.get("model"))
@@ -128,20 +125,25 @@ def read_balance(value):
 
 
 def atomic_write(record):
+    payload = json.dumps(record, allow_nan=False).encode("utf-8")
+    if len(payload) > MAX_CACHE:
+        raise ValueError("Usage inventory exceeds byte limit")
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
     fd, temporary = tempfile.mkstemp(dir=STATE, prefix=".usage-")
+    track_temporary(temporary)
     try:
-        with os.fdopen(fd, "w") as stream:
-            json.dump(record, stream, allow_nan=False)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
         os.replace(temporary, STATE / "inventory.json")
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+        untrack_temporary(temporary)
 
 
 def refresh():
     try:
-        previous = json.loads((STATE / "inventory.json").read_text())
+        previous = json.loads(read_local(STATE / "inventory.json", MAX_CACHE))
     except (OSError, ValueError):
         previous = {}
     old_accounts = {a["id"]: a for a in previous.get("accounts", []) if a.get("id")}
@@ -226,4 +228,10 @@ def refresh():
 
 
 if __name__ == "__main__":
-    refresh()
+    # os._exit avoids multiprocessing's implicit unbounded atexit joins after
+    # escalation. The parent holds no secrets and writes no cache on failure.
+    try:
+        code = supervise(refresh)
+    except BaseException:
+        code = 1
+    os._exit(code)
