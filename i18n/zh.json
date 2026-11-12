@@ -1,0 +1,15 @@
+{
+  "view.harness": "按 Harness",
+  "view.account": "按账户",
+  "view.empty": "尚未发现账户，请刷新或在客户端中登录。",
+  "quota.remaining": "剩余 %1%",
+  "quota.reset": "%1 后重置",
+  "balance.remaining": "余额：%1 %2",
+  "action.refresh": "刷新",
+  "status.unsupported": "暂不支持查询用量",
+  "status.unknown": "无法确定当前使用的 AI",
+  "status.account": "当前 AI 的账户不可用",
+  "status.signin": "无法读取登录信息",
+  "status.refresh": "刷新失败，如有缓存则显示上次结果",
+  "status.empty": "服务未返回额度信息"
+}

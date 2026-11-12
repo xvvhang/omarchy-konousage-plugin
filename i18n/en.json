@@ -1,0 +1,15 @@
+{
+  "view.harness": "Harness",
+  "view.account": "Accounts",
+  "view.empty": "No accounts discovered yet. Refresh or sign in using your client.",
+  "quota.remaining": "%1% left",
+  "quota.reset": "Resets in %1",
+  "balance.remaining": "Balance: %1 %2",
+  "action.refresh": "Refresh",
+  "status.unsupported": "Usage lookup not supported",
+  "status.unknown": "Current AI unknown",
+  "status.account": "Current account unavailable",
+  "status.signin": "Sign-in unavailable",
+  "status.refresh": "Unable to refresh · showing cached values if available",
+  "status.empty": "No quota windows reported"
+}
