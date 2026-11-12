@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "Icons.js" as Icons
 
 Panel {
   id: root
@@ -177,26 +178,44 @@ Panel {
 
               PanelSeparator { foreground: root.foreground }
 
-              Text {
-                textFormat: Text.PlainText
+              Row {
                 width: parent.width
-                text: usageRow.modelData.providerName
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                font.bold: true
-                elide: Text.ElideRight
-              }
+                spacing: Style.space(10)
 
-              Text {
-                textFormat: Text.PlainText
-                width: parent.width
-                text: usageRow.modelData.detailText || ""
-                visible: text !== ""
-                color: root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                wrapMode: Text.WrapAnywhere
+                ProviderIcon {
+                  id: rowIcon
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconKey: Icons.iconKey(root.viewMode, usageRow.modelData.providerId, usageRow.modelData.aiName)
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                }
+
+                Column {
+                  width: parent.width - rowIcon.width - parent.spacing
+                  spacing: Style.space(3)
+
+                  Text {
+                    textFormat: Text.PlainText
+                    width: parent.width
+                    text: usageRow.modelData.providerName
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    elide: Text.ElideRight
+                  }
+
+                  Text {
+                    textFormat: Text.PlainText
+                    width: parent.width
+                    text: usageRow.modelData.detailText || ""
+                    visible: text !== ""
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    wrapMode: Text.WrapAnywhere
+                  }
+                }
               }
 
               Repeater {
@@ -224,6 +243,26 @@ Panel {
                       color: Number(quotaRow.modelData.percent) >= 0.9 ? root.urgent : root.foreground
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.caption
+                    }
+                  }
+                  Rectangle {
+                    id: quotaTrack
+                    width: parent.width
+                    height: Math.max(Style.space(4), Math.round(Style.spacing.controlHeight * 0.14))
+                    radius: height / 2
+                    color: Style.selectedFillFor(root.foreground, Color.accent)
+
+                    Rectangle {
+                      anchors.left: parent.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      width: quotaTrack.width * Math.max(0, Math.min(1, 1 - Number(quotaRow.modelData.percent)))
+                      height: parent.height
+                      radius: height / 2
+                      color: Number(quotaRow.modelData.percent) >= 0.9 ? root.urgent : root.foreground
+
+                      Behavior on width {
+                        NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic }
+                      }
                     }
                   }
                   Text {

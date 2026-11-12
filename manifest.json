@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "konochi.konousage",
   "name": "Konousage",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "alec",
   "license": "MIT",
   "description": "AI usage by harness and deduplicated account for OpenCode and Codex.",

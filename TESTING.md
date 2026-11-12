@@ -1,5 +1,19 @@
 # Validation record
 
+## List header icons — 2026-11-12
+
+- Release 1.1.1 uses compact 20-unit header icons and restores remaining-quota
+  progress bars with the 90%-used warning threshold and reset countdowns.
+- Added local Omarchy Agents SVGs for OpenCode, DeepSeek and ZAI, reusing the
+  existing Codex/ChatGPT and Claude assets. Attribution remains in LICENSE.
+- 22 offline tests pass (icon-helper checks require Node.js), including harness
+  versus account mapping, unknown/malicious-name fallback, theme luminance,
+  candidate asset existence and SVG parsing.
+- Manifest validation and Qt 6 qmllint (temporary `qs` alias) exit 0; no import,
+  syntax or unresolved-type diagnostics. Dynamic kit-property warnings remain.
+- Shell restarted and account-view IPC succeeds, with no icon-load or binding
+  errors in the startup log. Manual light/dark visual inspection remains pending.
+
 ## Harness/account views — 2026-11-12
 
 List-layout correction:

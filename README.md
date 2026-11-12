@@ -11,6 +11,14 @@ it does not group by harness. There are no per-account tabs or detail pages.
 Harness rows use the tool name as the primary title and AI/model as the subtitle.
 Account rows use AI plus account label as the primary title (to distinguish
 multiple accounts for the same AI), and list all associated harnesses underneath.
+List headers include bundled brand icons, following Omarchy Agents: harness icons
+for OpenCode/Codex and AI icons for ChatGPT/Claude/DeepSeek/ZAI accounts. Monochrome
+marks adapt to light/dark popup surfaces; unknown brands use the generic AI glyph.
+Icons are local assets only and never trigger network requests. Omarchy-derived
+assets retain the attribution in LICENSE.
+Compact 20-unit icons accompany each header. Quota windows retain remaining-allowance
+progress bars and reset countdowns, highlighting usage at or above 90%; balance-only
+accounts show amounts without inferring a total allowance.
 The same ChatGPT account shared across clients appears once in Accounts and is
 queried once per refresh. Harness entries show shared account quota, **not** usage
 attributed to that tool. OpenCode's selection is read from the first recent model
